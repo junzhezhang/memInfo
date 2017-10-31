@@ -43,6 +43,8 @@ import alexnet
 import vgg
 import resnet
 
+from datetime import datetime
+
 
 def load_dataset(filepath):
     print('Loading data file %s' % filepath)
@@ -145,6 +147,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=200,
         np.random.shuffle(idx)
         loss, acc = 0.0, 0.0
         print('Epoch %d' % epoch)
+        print(datetime.now().timestamp()*1000) # miliseconds
         for b in range(1):
             x = train_x[idx[b * batch_size: (b + 1) * batch_size]]
             y = train_y[idx[b * batch_size: (b + 1) * batch_size]]

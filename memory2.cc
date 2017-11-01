@@ -96,7 +96,9 @@ void CnMemPool::Malloc(void **ptr, const size_t size) {
   fstream file("memInfo.text", ios::in|ios::out|ios::app);
   int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   file<<"Malloc "<<*ptr<<' '<<size<<' '<<now<<endl;
-  cnmemPrintMemoryState(NULL,NULL);
+  FILE *file =fopen("cnmemMemoryState.log",'a');
+  cnmemPrintMemoryState(file,NULL);
+  fclose(file);
 }
 
 void CnMemPool::Free(void *ptr) {
@@ -107,7 +109,9 @@ void CnMemPool::Free(void *ptr) {
   fstream file("memInfo.text", ios::in|ios::out|ios::app);
   int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   file<<"Free "<<ptr<<' '<<now<<endl;
-  cnmemPrintMemoryState(NULL,NULL);
+  FILE *file =fopen("cnmemMemoryState.log",'a');
+  cnmemPrintMemoryState(file,NULL);
+  fclose(file);
 }
 
 // ===========================================================================

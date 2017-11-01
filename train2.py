@@ -122,7 +122,7 @@ def caffe_lr(epoch):
         return 0.0001
 
 
-def train(data, net, max_epoch, get_lr, weight_decay, batch_size=200,
+def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
           use_cpu=False):
     print('Start intialization............')
     if use_cpu:
@@ -147,7 +147,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=200,
         np.random.shuffle(idx)
         loss, acc = 0.0, 0.0
         print('Epoch %d' % epoch)
-        print(datetime.now().timestamp()*1000) # miliseconds
+        print(datetime.now().timetz()) # miliseconds
         for b in range(1):
             x = train_x[idx[b * batch_size: (b + 1) * batch_size]]
             y = train_y[idx[b * batch_size: (b + 1) * batch_size]]

@@ -23,6 +23,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <stdint.h>
 using namespace std;
 #ifdef USE_CUDA
 
@@ -93,7 +94,7 @@ void CnMemPool::Malloc(void **ptr, const size_t size) {
   CHECK_EQ(status, cnmemStatus_t::CNMEM_STATUS_SUCCESS)
       << " " << cnmemGetErrorString(status);
   fstream file("memInfo.text", ios::in|ios::out|ios::app);
-  __int64 now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   file<<"Malloc "<<*ptr<<' '<<size<<' '<<now<<endl;
   cnmemPrintMemoryState(NULL,NULL);
 }
@@ -104,7 +105,7 @@ void CnMemPool::Free(void *ptr) {
   CHECK_EQ(status, cnmemStatus_t::CNMEM_STATUS_SUCCESS)
       << " " << cnmemGetErrorString(status);
   fstream file("memInfo.text", ios::in|ios::out|ios::app);
-  __int64 now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   file<<"Free "<<ptr<<' '<<now<<endl;
   cnmemPrintMemoryState(NULL,NULL);
 }

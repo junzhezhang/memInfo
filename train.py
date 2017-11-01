@@ -143,13 +143,20 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
     num_train_batch = train_x.shape[0] // batch_size
     num_test_batch = test_x.shape[0] // batch_size
     idx = np.arange(train_x.shape[0], dtype=np.int32)
+    fileTimeLog =open("epochTimeLog.text","a")
     for epoch in range(1):
         np.random.shuffle(idx)
         loss, acc = 0.0, 0.0
         print('Epoch %d' % epoch)
         print(datetime.now().timetz()) # miliseconds
         print(int(round(time.time()*1000)))
-	for b in range(1):
+        fileTimeLog.write('Epoch %d: ' % epoch)
+        fileTimeLog.write(int(round(time.time()*1000)))
+        fileTimeLog.write('\n')
+	for b in range(5):
+            fileTimeLog.write('iteration %d: ' % b)
+            fileTimeLog.write(int(round(time.time()*1000)))
+            fileTimeLog.write('\n')
             x = train_x[idx[b * batch_size: (b + 1) * batch_size]]
             y = train_y[idx[b * batch_size: (b + 1) * batch_size]]
             tx.copy_from_numpy(x)
@@ -178,6 +185,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
 
         print('test loss = %f, test accuracy = %f' %
               ((loss / num_test_batch), (acc / num_test_batch)))
+    fileTimeLog.close()
     net.save('model', 20)  # save model params into checkpoint file
 
 if __name__ == '__main__':

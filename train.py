@@ -151,11 +151,11 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         print(datetime.now().timetz()) # miliseconds
         print(int(round(time.time()*1000)))
         fileTimeLog.write('Epoch %d: ' % epoch)
-        fileTimeLog.write(int(round(time.time()*1000)))
+        fileTimeLog.write(str(int(round(time.time()*1000))))
         fileTimeLog.write('\n')
 	for b in range(5):
             fileTimeLog.write('iteration %d: ' % b)
-            fileTimeLog.write(int(round(time.time()*1000)))
+            fileTimeLog.write(str(int(round(time.time()*1000))))
             fileTimeLog.write('\n')
             x = train_x[idx[b * batch_size: (b + 1) * batch_size]]
             y = train_y[idx[b * batch_size: (b + 1) * batch_size]]

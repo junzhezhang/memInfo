@@ -105,7 +105,7 @@ void CnMemPool::Malloc(void **ptr, const size_t size) {
   size_t total_byte=0;
   cudaMemGetInfo(&free_byte,&total_byte);
   fstream file2("cudaMem.text", ios::in|ios::out|ios::app);
-  file<<free_byte<<' '<<total_byte<<endl;
+  file2<<free_byte<<' '<<total_byte<<endl;
   //FILE *pfile =fopen("cnmemMemoryState.log","a");
   //cnmemPrintMemoryState(pfile,NULL);
   //fclose(pfile);
@@ -123,7 +123,7 @@ void CnMemPool::Free(void *ptr) {
   size_t total_byte=0;
   cudaMemGetInfo(&free_byte,&total_byte);
   fstream file2("cudaMem.text", ios::in|ios::out|ios::app);
-  file<<free_byte<<' '<<total_byte<<endl;
+  file2<<free_byte<<' '<<total_byte<<endl;
   //FILE *pfile =fopen("cnmemMemoryState.log","a");
   //cnmemPrintMemoryState(pfile,NULL);
   //fclose(pfile);

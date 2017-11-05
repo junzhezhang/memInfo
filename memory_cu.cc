@@ -28,6 +28,7 @@
 #include "singa/core/device.h"
 #include "singa/singa_config.h"
 #include "singa/utils/opencl_utils.h"
+#include <cuda.h>
 
 using namespace std;
 #ifdef USE_CUDA

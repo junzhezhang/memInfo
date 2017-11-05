@@ -195,6 +195,7 @@ if __name__ == '__main__':
                         default='alexnet')
     parser.add_argument('data', default='cifar-10-batches-py')
     parser.add_argument('--use_cpu', action='store_true')
+    parser.add_argument('batch_size', default=100)
     args = parser.parse_args()
     assert os.path.exists(args.data), \
         'Pls download the cifar10 dataset via "download_data.py py"'
@@ -206,7 +207,7 @@ if __name__ == '__main__':
         net = caffe_net.create_net(args.use_cpu)
         # for cifar10_full_train_test.prototxt
         train((train_x, train_y, test_x, test_y), net, 160, alexnet_lr, 0.004,
-              use_cpu=args.use_cpu)
+              use_cpu=args.use_cpu,batch_size=args.batch_size)
         # for cifar10_quick_train_test.prototxt
         # train((train_x, train_y, test_x, test_y), net, 18, caffe_lr, 0.004,
         #      use_cpu=args.use_cpu)

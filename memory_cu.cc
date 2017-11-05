@@ -103,7 +103,7 @@ void CnMemPool::Malloc(void **ptr, const size_t size) {
   file<<"Malloc "<<*ptr<<' '<<size<<' '<<now<<endl;
   size_t free_byte=0;
   size_t total_byte=0;
-  cudaMemGetInfo(&free_byte,&total_byte);
+  cuMemGetInfo(&free_byte,&total_byte);
   double free_db = (double)free_byte ;
   double total_db = (double)total_byte ;
   double used_db = total_db - free_db ;
@@ -124,7 +124,7 @@ void CnMemPool::Free(void *ptr) {
   file<<"Free "<<ptr<<' '<<now<<endl;
   size_t free_byte=0;
   size_t total_byte=0;
-  cudaMemGetInfo(&free_byte,&total_byte);
+  cuMemGetInfo(&free_byte,&total_byte);
   double free_db = (double)free_byte ;
   double total_db = (double)total_byte ;
   double used_db = total_db - free_db ;

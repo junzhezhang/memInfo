@@ -195,7 +195,7 @@ if __name__ == '__main__':
                         default='alexnet')
     parser.add_argument('data', default='cifar-10-batches-py')
     parser.add_argument('--use_cpu', action='store_true')
-    parser.add_argument('batch_size', default=100)
+    parser.add_argument('batch_size', type=int, default=100)
     args = parser.parse_args()
     assert os.path.exists(args.data), \
         'Pls download the cifar10 dataset via "download_data.py py"'

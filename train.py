@@ -130,7 +130,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         dev = device.get_default_device()
     else:
         print('Using GPU')
-        dev = device.create_cuda_gpu()
+        dev = device.create_cuda_gpu_on(1)
 
     net.to_device(dev)
     opt = optimizer.SGD(momentum=0.9, weight_decay=weight_decay)
@@ -153,7 +153,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         fileTimeLog.write('Epoch %d: ' % epoch)
         fileTimeLog.write(str(int(round(time.time()*1000))))
         fileTimeLog.write('\n')
-	for b in range(5):
+	for b in range(1):
             time.sleep(0.5)
             fileTimeLog.write('iteration %d: ' % b)
             fileTimeLog.write(str(int(round(time.time()*1000))))
@@ -195,7 +195,7 @@ if __name__ == '__main__':
                         default='alexnet')
     parser.add_argument('data', default='cifar-10-batches-py')
     parser.add_argument('--use_cpu', action='store_true')
-    parser.add_argument('batch_size',default=100，type=int)
+    parser.add_argument('batch_size',type=int, default=100)
     args = parser.parse_args()
     assert os.path.exists(args.data), \
         'Pls download the cifar10 dataset via "download_data.py py"'

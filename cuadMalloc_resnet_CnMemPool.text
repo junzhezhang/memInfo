@@ -1,0 +1,2 @@
+Before cudaMalloc, data and size in MB:    0 0 0 256
+After  cudaMalloc, data and size in MB:    0x7062c0000 30168317952 28770.8 256

@@ -57,13 +57,11 @@ typedef struct _Opencl { } Opencl;
 bool getLastLine(const char *filename, string &lastLine)
 {
     
-#define _LL_BUFFSIZE_ 2048
-    
     lastLine.clear();                    // regardless, zero out our return string
     if (!filename || !*filename)    // if no file to work on, return false
         return false;
     
-    char buff[_LL_BUFFSIZE_];        // our temporary input buffer
+    char buff[256];        // our temporary input buffer
     
     ifstream is;
     is.open(filename);

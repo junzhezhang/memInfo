@@ -34,6 +34,7 @@
 #endif
 #endif // USE_CUDA
 #include <fstream>
+#include <chrono>
 using namespace std;
 #ifdef USE_OPENCL
 #include "singa/utils/opencl_utils.h"
@@ -52,6 +53,57 @@ typedef struct _Cuda { } Cuda;
 typedef struct _Opencl { } Opencl;
 }  // namespace lang
 
+/// getLastLine and split junzhe 12.29
+bool getLastLine(const char *filename, string &lastLine)
+{
+    
+#define _LL_BUFFSIZE_ 2048
+    
+    lastLine.clear();                    // regardless, zero out our return string
+    if (!filename || !*filename)    // if no file to work on, return false
+        return false;
+    
+    char buff[_LL_BUFFSIZE_];        // our temporary input buffer
+    
+    ifstream is;
+    is.open(filename);
+    
+    if (!is)                        // return false if couldn't open file
+        return false;
+    
+    is.seekg (0, ios::end);            // go to end of file
+    int length = is.tellg();        // find out how large it is
+    is.seekg(length-min(length,_LL_BUFFSIZE_),ios::beg);    // seek back from end a short ways
+    
+    // read in each line of the file until we're done
+    buff[0]=0;
+    do {
+        // uncomment if you want to skip empty lines or lines that start with whitespace
+        // fancier logic is probably called for
+        
+         if (!isspace(buff[0]) && buff[0] != 0)
+         lastLine = buff;
+        
+    } while (is.getline(buff, _LL_BUFFSIZE_));
+    
+    is.close();
+    
+    return true;
+}
+
+vector<string> split(string s, string delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    string token;
+    vector<string> res;
+    while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
+        token = s.substr(pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back(token);
+    }
+    res.push_back(s.substr(pos_start));
+    return res;
+}
+
 /// Block represent a chunk of memory (on device or host).
 class Block {
  public:
@@ -64,15 +116,29 @@ class Block {
   //  ref) : data_(ptr), size_(size), offset_(offset), ref_count_(ref) {}
   void* mutable_data() {
     initialized_ = true;
-fstream file_block("blockInfo.text", ios::in|ios::out|ios::app);
-file_block<<lc<<" mutable "<<data_<<" "<<size_<<std::endl;
-lc++;
+    fstream file_block("blockInfo.text", ios::in|ios::out|ios::app);
+    chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
+    string lastLine;
+    getLastLine("lockInfo.text",lastLine);
+    vector<string> v = split(lastLine, " ");
+    int result;
+    stringstream convert(v[0]);
+    convert>>result;
+    file_block<<result+1<<" mutable "<<data_<<" "<<size_<<" "<<now<<std::endl;
+
     return static_cast<char*>(data_) + offset_;
   }
   const void* data() const {
-fstream file_block("blockInfo.text", ios::in|ios::out|ios::app);
-file_block<<lc<<" read "<<data_<<" "<<size_<<std::endl;
-//lc++;
+    fstream file_block("blockInfo.text", ios::in|ios::out|ios::app);
+    chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
+    string lastLine;
+    getLastLine("lockInfo.text",lastLine);
+    vector<string> v = split(lastLine, " ");
+    int result;
+    stringstream convert(v[0]);
+    convert>>result;
+    file_block<<result+1<<" read "<<data_<<" "<<size_<<" "<<now<<std::endl;
+
     CHECK(initialized_) << "Must initialize data before reading it";
     return static_cast<char*>(data_) + offset_;
   }

@@ -22,6 +22,7 @@
 #include "singa/proto/core.pb.h"
 #include <iostream>
 #include <fstream> //a.
+#include <chrono>
 //for SmartMemoryPool
 using namespace std;
 
@@ -93,9 +94,15 @@ void CnMemPool::Malloc(void **ptr, const size_t size) {
   cnmemStatus_t status = cnmemMalloc(ptr, size, NULL);
   CHECK_EQ(status, cnmemStatus_t::CNMEM_STATUS_SUCCESS)
       << " " << cnmemGetErrorString(status);
+      fstream file("memInfo.text", ios::in|ios::out|ios::app);
+  chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
+  file<<"Malloc "<<*ptr<<' '<<size<<' '<<now<<endl;
 }
 
 void CnMemPool::Free(void *ptr) {
+    fstream file("memInfo.text", ios::in|ios::out|ios::app);
+  chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
+  file<<"Free "<<ptr<<' '<<now<<endl;
   CHECK(initialized_) << "Cannot free the memory as the pool is not initialzied";
   cnmemStatus_t status = cnmemFree(ptr, NULL);
   CHECK_EQ(status, cnmemStatus_t::CNMEM_STATUS_SUCCESS)
@@ -121,6 +128,7 @@ public:
     size_t size;
     int r; //arrive
     int d; //depart
+    int crossItr =0;
     Vertex(int,size_t,int,int);
     pair<size_t, size_t> colorRange;
     vector<pair<size_t, size_t>> colorOccupied;
@@ -525,7 +533,7 @@ pair<map<int,int>,map<int,int>> cross_itr_durations(vector<string>vec_double, in
 }
 
 /// main run funtion
-vector<Vertex> run(vector<string>vec, int &idxRange, size_t &offset,string colorMethod){
+vector<Vertex> run(vector<string>vec, int &idxRange, size_t &offset, size_t &offsetCrossItr,string colorMethod){
     /*
      run function, input vector of strings, return colored vertices,
      update idxRange, offset.
@@ -533,10 +541,16 @@ vector<Vertex> run(vector<string>vec, int &idxRange, size_t &offset,string color
      */
     vector<onePieceMsg>onePieceMsgVec_ = strVec_2_pieceMsgVec(vec,idxRange);
     pair<vector<onePairMsg>,vector<onePairMsg>>pairOfPairMsgVec_=pieceMsgVec_2_pairOfPairMsgVec(onePieceMsgVec_,idxRange);
+    //1. normal blocks 2. cross-iteration blocks.
     vector<onePairMsg>pairMsgVec_1 = pairOfPairMsgVec_.first;
     vector<onePairMsg>pairMsgVec_2 = pairOfPairMsgVec_.second;
   
     vector<Vertex>vertices_2 = colorSomeVertices(pairMsgVec_2,offset,colorMethod);
+    for (int i=0; i<vertices_2.size();i++){
+      vertices_2[i].crossItr = 1;
+    }
+    offsetCrossItr = offset;
+    offset = offsetCrossItr*2;
     vector<Vertex>vertices = colorSomeVertices(pairMsgVec_1,offset,colorMethod);
     //merge
     vertices.insert(vertices.end(),vertices_2.begin(),vertices_2.end());
@@ -686,13 +700,10 @@ void SmartMemPool::Malloc(void** ptr, const size_t size){
      3. if flag=1, look up table, malloc/cudaMalloc if not in the Table
      4. test repeated sequence every 100 blocks, update globeCounter.
      */
-    //verify
-//    cout<<"before Malloc: gc  GC idxRange:"<<gc<<' '<<globeCounter<<' '<<idxRange<<endl;
-//    cout<<"maxLen, location and flag: "<<maxLen<<' '<<location<<' '<<mallocFlag<<endl;
-//    cout<<" offset: "<<offset<<endl;
+
     //TODO(junzhe) Note, this is dummy here, not catter multiple GPU.
-    fstream file("memInfo.text", ios::in|ios::out|ios::app); //a.
-    file<<gc<<' '<<"Malloc"; //a.
+    //fstream file("memInfo.text", ios::in|ios::out|ios::app); //a.
+    //file<<gc<<' '<<"Malloc"; //a.
     if (!initialized_){
     Init();
   }
@@ -706,7 +717,7 @@ void SmartMemPool::Malloc(void** ptr, const size_t size){
         cout<<"switched to color-malloc"<<endl;
         vector<string>vec_run(&vec[location],&vec[location+maxLen]);
         
-        vector<Vertex>vertices = run(vec_run, idxRange,offset,colorMethod);
+        vector<Vertex>vertices = run(vec_run, idxRange,offset,offsetCrossItr, colorMethod);
 
         //here to verify if the coloring got overlapping. TODO(junzhe) optional
         //overlap_test(vertices);
@@ -721,7 +732,12 @@ void SmartMemPool::Malloc(void** ptr, const size_t size){
         //update ptrPool
         cudaMalloc(&ptrPool,offset); //poolSize or memory foot print  offset.
         cout<<"ptrPool is: "<<ptrPool<<endl;
-        //3rd map
+
+        //b.  below 2 loops: vec_r2Ver to replace Table_r2Ver
+        for (int i=0; i<idxRange; i++){
+            lookUpElement tempElement;
+            Vec_r2Ver.push_back(make_pair(i,tempElement));
+        }
         for (int i=0; i<vertices.size(); i++){
             lookUpElement temp;
             temp.r_idx =vertices[i].r;
@@ -730,8 +746,10 @@ void SmartMemPool::Malloc(void** ptr, const size_t size){
             temp.offset=vertices[i].colorRange.first;
             temp.ptr = (void*)((char*)ptrPool+temp.offset*sizeof(char));
             temp.Occupied =0;
+            temp.crossItr = vertices[i].crossItr;
+            temp.Occupied_backup =0; 
             //build tables for lookup.
-            Table_r2Ver[temp.r_idx]= temp;
+            Vec_r2Ver[vertices[i].r].second= temp;
         }
     }
     
@@ -757,32 +775,43 @@ void SmartMemPool::Malloc(void** ptr, const size_t size){
         string tempStr3 = strm3.str();
         string temp = tempStr1+tempStr2+" "+tempStr3;
         vec.push_back(temp);
-        file<<" Condition M1, addr: "<<*ptr<<endl;  //a.
+        //file<<" Condition M1, addr: "<<*ptr<<endl;  //a.
     }else{
-        /// 3. if flag=1, look up table, switch back at last iteration.
+        /// 3. if flag=1, look up table.
         int lookupIdx = (gc-location)%maxLen;
-        if ((Table_r2Ver.find(lookupIdx)->second.size == size)&& (Table_r2Ver.find(lookupIdx)->second.Occupied==0)){
-            //assign ptr and mark as occupied, and add in ptr2rIdx
-            allocatedPtr = Table_r2Ver.find(lookupIdx)->second.ptr;
-            Table_r2Ver.find(lookupIdx)->second.Occupied=1;
-            Table_p2r[allocatedPtr]=lookupIdx;
-            *ptr =allocatedPtr; //a. value added step
-            file<<" Condition M2, addr: "<<*ptr<<endl;  //a.
-            //update load
-            if(loadLogFlag==1){
-                Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first,Table_load.find(gc-1)->second.second+size);
-            }
-        }else {
-            //size not proper or occupied
-            cudaMalloc(ptr, size);
-            allocatedPtr = *ptr;
-            file<<" Condition M3, addr: "<<*ptr<<endl;  //a.
-            //update load
-            if(loadLogFlag==1){
-                Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first+size,Table_load.find(gc-1)->second.second);
-            }
-        }
-    }
+        if ((Vec_r2Ver[lookupIdx].second.size ==size)&&(Vec_r2Ver[lookupIdx].second.Occupied*Vec_r2Ver[lookupIdx].second.Occupied_backup==0)){
+             if (Vec_r2Ver[lookupIdx].second.Occupied==0){
+                //condition M2, normal and crossItr's primary.
+                //assign ptr and mark as occupied, and add in ptr2rIdx
+                allocatedPtr = Vec_r2Ver[lookupIdx].second.ptr;
+                Vec_r2Ver[lookupIdx].second.Occupied= 1;
+                Table_p2r[allocatedPtr]=lookupIdx;                
+                //update load
+                if(loadLogFlag==1){
+                  Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first,Table_load.find(gc-1)->second.second+size);
+                }
+                //file<<" Condition M2, addr: "<<*ptr<<endl;  //a.
+              }else if ((Vec_r2Ver[lookupIdx].second.crossItr==1) && (Vec_r2Ver[lookupIdx].second.Occupied==1) && (Vec_r2Ver[lookupIdx].second.Occupied_backup ==0)) {
+                //condition M4, crossItr's backup
+                allocatedPtr = (void*)((char*)Vec_r2Ver[lookupIdx].second.ptr+offsetCrossItr*sizeof(char));
+                Vec_r2Ver[lookupIdx].second.Occupied_backup=1;
+                Table_p2r[allocatedPtr]=lookupIdx;
+                //update load
+                if(loadLogFlag==1){
+                  Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first,Table_load.find(gc-1)->second.second+size);
+                }
+                //file<<" Condition M4, addr: "<<*ptr<<endl;  //a.
+              }
+        }else{  //condition M3, size not proper or both occupied.
+                cudaMalloc(ptr, size);
+                allocatedPtr = *ptr;       
+                //update load
+                if(loadLogFlag==1){
+                  Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first+size,Table_load.find(gc-1)->second.second);
+                }
+                //file<<" Condition M3, addr: "<<*ptr<<endl;  //a.
+        } 
+    } //end of loop for flag=1
     
     ///4. test repeated sequence every 100 blocks, update globeCounter.
     if (((gc+1)%300==0) && (mallocFlag==0) && (globeCounter==-1)&&(gc+2>checkPoint)){
@@ -791,26 +820,22 @@ void SmartMemPool::Malloc(void** ptr, const size_t size){
         checkPoint=checkPoint*2;
     }
     
-    ///get load info, after gc == GC+2maxLen
+    ///get load info, when gc == GC+2maxLen
     if (gc==(globeCounter+2*maxLen)&& (globeCounter>0)){
         getMaxLoad();
         loadLogFlag=0;
     }
     
     gc++;
-    Table_p2s[allocatedPtr]=size;
-    *ptr = allocatedPtr; //TODO(junzhe) verify ptr, allocatedPtr, if pass by reference or not.
+    Table_p2s[allocatedPtr]=size; //update it for load tracking purpose.
+    *ptr = allocatedPtr; 
 }
 
 ///Free
 void SmartMemPool::Free(void* ptr){
     
-    //verify
-//    cout<<"before Free: gc  GC idxRange:"<<gc<<' '<<globeCounter<<' '<<idxRange<<endl;
-//    cout<<"maxLen, location and flag: "<<maxLen<<' '<<location<<' '<<mallocFlag<<endl;
-//    cout<<" offset: "<<offset<<endl;
-    fstream file("memInfo.text", ios::in|ios::out|ios::app); //a.
-    file<<gc<<' '<<"Free"; //a.
+    //fstream file("memInfo.text", ios::in|ios::out|ios::app); //a.
+    //file<<gc<<' '<<"Free"; //a.
     
     size_t deallocatedSize = Table_p2s.find(ptr)->second;
     
@@ -823,7 +848,7 @@ void SmartMemPool::Free(void* ptr){
         string temp = tempStr1+tempStr2;
         vec.push_back(temp);
         
-        file<<" Condition F1, addr: "<<ptr<<endl;  //a.
+        //file<<" Condition F1, addr: "<<ptr<<endl;  //a.
         //update load before free
         if(loadLogFlag==1){
             Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first-deallocatedSize,Table_load.find(gc-1)->second.second);
@@ -835,28 +860,38 @@ void SmartMemPool::Free(void* ptr){
             int resp_rIdx = Table_p2r.find(ptr)->second;
             Table_p2r.erase(ptr);
             
-            if (((gc-location)%maxLen == Table_r2Ver.find(resp_rIdx)->second.d_idx) && (ptr == Table_r2Ver.find(resp_rIdx)->second.ptr) &&(Table_r2Ver.find(resp_rIdx)->second.Occupied ==1)){
-                //update load
-                if(loadLogFlag==1){
-                Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first,Table_load.find(gc-1)->second.second-deallocatedSize);
-                }
-                file<<" Condition F2, addr: "<<ptr<<endl;  //a.
-                //deallocate and unmark TODO(junzhe) double check what else to be done.
-                Table_r2Ver.find(resp_rIdx)->second.Occupied =0; //freed, able to allocate again.
-            }else{
-                cout<<"error, in freeing the ptr"<<endl;
+            if (ptr == Vec_r2Ver[resp_rIdx].second.ptr){
+              //Condition F2, from M2
+              Vec_r2Ver[resp_rIdx].second.Occupied =0; //freed, able to allocate again.
+              //file<<" Condition F2, addr: "<<ptr<<endl;  //a.
+            }else if (ptr == (void*)((char*)Vec_r2Ver[resp_rIdx].second.ptr+offsetCrossItr*sizeof(char))){
+              //Condition F4, from M4
+              Vec_r2Ver[resp_rIdx].second.Occupied_backup =0;
+              //file<<" Condition F4, addr: "<<ptr<<endl;  //a.
+            } else{
+              //Condition F5, from M2, M4 but idx switched.
+              if (((float)((char*)ptr-((char*)ptrPool+offsetCrossItr*sizeof(char)))>0) && ((float)((char*)ptr-((char*)ptrPool+2*offsetCrossItr*sizeof(char)))<0)){
+                     Vec_r2Ver[resp_rIdx].second.Occupied_backup =0;
+              }else{
+                     Vec_r2Ver[resp_rIdx].second.Occupied =0;
+              }
             }
-        }else{
             //update load
-            if(loadLogFlag==1){
-                Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first-deallocatedSize,Table_load.find(gc-1)->second.second);
-            }
-            file<<" Condition F3, addr: "<<ptr<<endl;  //a.
-            cudaFree(ptr);
+             if(loadLogFlag==1){
+                 Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first,Table_load.find(gc-1)->second.second-deallocatedSize);
+             }
+        }else{
+          //update load
+          if(loadLogFlag==1){
+              Table_load[gc]=make_pair(Table_load.find(gc-1)->second.first-deallocatedSize,Table_load.find(gc-1)->second.second);
+          }
+          //file<<" Condition F3, addr: "<<ptr<<endl;  //a.
+          cudaFree(ptr);
         }
+            
     }
     gc++;
-}
+}//end of Free.
 
 
 SmartMemPool::~SmartMemPool(){

@@ -71,7 +71,7 @@ bool getLastLine(const char *filename, string &lastLine)
     
     is.seekg (0, ios::end);            // go to end of file
     int length = is.tellg();        // find out how large it is
-    is.seekg(length-min(length,_LL_BUFFSIZE_),ios::beg);    // seek back from end a short ways
+    is.seekg(length-min(length,256),ios::beg);    // seek back from end a short ways
     
     // read in each line of the file until we're done
     buff[0]=0;
@@ -82,7 +82,7 @@ bool getLastLine(const char *filename, string &lastLine)
          if (!isspace(buff[0]) && buff[0] != 0)
          lastLine = buff;
         
-    } while (is.getline(buff, _LL_BUFFSIZE_));
+    } while (is.getline(buff, 256));
     
     is.close();
     

@@ -130,7 +130,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         dev = device.get_default_device()
     else:
         print('Using GPU')
-        dev = device.create_cuda_gpu_on(1)
+        dev = device.create_cuda_gpu_on(0)
 
     net.to_device(dev)
     opt = optimizer.SGD(momentum=0.9, weight_decay=weight_decay)
@@ -145,6 +145,7 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
     idx = np.arange(train_x.shape[0], dtype=np.int32)
     fileTimeLog =open("epochTimeLog.text","a")
     for epoch in range(3):
+        time.sleep(10)
         np.random.shuffle(idx)
         loss, acc = 0.0, 0.0
         print('Epoch %d' % epoch)
@@ -153,8 +154,8 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         fileTimeLog.write('Epoch %d: ' % epoch)
         fileTimeLog.write(str(int(round(time.time()*1000))))
         fileTimeLog.write('\n')
-        for b in range(num_train_batch):
-            #time.sleep(0.001)
+        for b in range(20):
+            time.sleep(2)
             fileTimeLog.write('iteration %d: ' % b)
             fileTimeLog.write(str(int(round(time.time()*1000))))
             fileTimeLog.write('\n')
@@ -173,9 +174,10 @@ def train(data, net, max_epoch, get_lr, weight_decay, batch_size=100,
         info = '\ntraining loss = %f, training accuracy = %f, lr = %f' \
             % ((loss / num_train_batch), (acc / num_train_batch), get_lr(epoch))
         print(info)
-
+        time.sleep(5)
         loss, acc = 0.0, 0.0
         for b in range(0):
+            time.sleep(2)
             x = test_x[b * batch_size: (b + 1) * batch_size]
             y = test_y[b * batch_size: (b + 1) * batch_size]
             tx.copy_from_numpy(x)

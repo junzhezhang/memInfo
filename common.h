@@ -67,14 +67,16 @@ class Block {
     initialized_ = true;
     fstream file_block("blockInfo.text", ios::in|ios::out|ios::app);
     //chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
-    file_block<<" mutable "<<data_<<" "<<size_<<std::endl; //" "<<now<<
+int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();    
+file_block<<" mutable "<<data_<<" "<<size_<<" "<<now<<std::endl; //" "<<now<<
 
     return static_cast<char*>(data_) + offset_;
   }
   const void* data() const {
     fstream file_block("blockInfo.text", ios::in|ios::out|ios::app);
     //chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
-    file_block<<" read "<<data_<<" "<<size_<<std::endl; //" "<<now<<
+int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();    
+file_block<<" read "<<data_<<" "<<size_<<" "<<now<<std::endl; //" "<<now<<
 
     CHECK(initialized_) << "Must initialize data before reading it";
     return static_cast<char*>(data_) + offset_;

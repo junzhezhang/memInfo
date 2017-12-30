@@ -94,16 +94,16 @@ void CnMemPool::Malloc(void **ptr, const size_t size) {
   cnmemStatus_t status = cnmemMalloc(ptr, size, NULL);
   CHECK_EQ(status, cnmemStatus_t::CNMEM_STATUS_SUCCESS)
       << " " << cnmemGetErrorString(status);
-      fstream file("memInfo.text", ios::in|ios::out|ios::app);
-  chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
-  file<<"Malloc "<<*ptr<<' '<<size<<' '<<now<<endl;
+fstream file("memInfo.text", ios::in|ios::out|ios::app);
+int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+file<<"Malloc "<<*ptr<<' '<<size<<' '<<now<<endl;
 }
 
 void CnMemPool::Free(void *ptr) {
-    fstream file("memInfo.text", ios::in|ios::out|ios::app);
-  chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
-  file<<"Free "<<ptr<<' '<<now<<endl;
-  CHECK(initialized_) << "Cannot free the memory as the pool is not initialzied";
+fstream file("memInfo.text", ios::in|ios::out|ios::app);
+int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+file<<"Free "<<ptr<<' '<<now<<endl;
+CHECK(initialized_) << "Cannot free the memory as the pool is not initialzied";
   cnmemStatus_t status = cnmemFree(ptr, NULL);
   CHECK_EQ(status, cnmemStatus_t::CNMEM_STATUS_SUCCESS)
       << " " << cnmemGetErrorString(status);
